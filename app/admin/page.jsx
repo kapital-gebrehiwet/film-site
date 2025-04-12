@@ -282,11 +282,6 @@ const AdminDashboard = () => {
           <div className="mb-12">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-semibold">Movie Fee Management</h2>
-              <Link href="/admin/movies/add">
-                <button className={`px-4 py-2 rounded-lg ${isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-gray-200 hover:bg-gray-300'} transition-colors`}>
-                  Add New Movie
-                </button>
-              </Link>
             </div>
             
             {loading.list ? (

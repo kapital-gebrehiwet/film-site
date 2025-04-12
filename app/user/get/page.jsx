@@ -114,43 +114,19 @@ export default function UserMoviesPage() {
   const handlePayment = async (movieId) => {
     try {
       setProcessingPayments(prev => ({ ...prev, [movieId]: true }));
-      console.log('Processing payment for movie:', movieId);
-      
       const movie = movies.find(m => m._id === movieId);
       if (!movie) throw new Error('Movie not found');
       
       const response = await fetch('/api/payment', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          movieId,
-          amount: movie.fee,
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ movieId, amount: movie.fee }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Payment failed');
-      }
-
+      if (!response.ok) throw new Error('Payment failed');
       const data = await response.json();
-      console.log('Payment initialized:', data);
-
-      // Update local state to unlocked and unblurred
-      setMovieStates(prev => ({
-        ...prev,
-        [movieId]: {
-          isLocked: false,
-          isBlurred: false
-        }
-      }));
-
-      // Redirect to Chapa payment page
       window.location.href = data.paymentUrl;
     } catch (err) {
-      console.error('Payment error:', err);
       setError(err.message);
       setProcessingPayments(prev => ({ ...prev, [movieId]: false }));
     }

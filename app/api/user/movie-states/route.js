@@ -143,11 +143,7 @@ export async function POST(request) {
     );
     console.log('Updated movie state:', movieState);
 
-    return NextResponse.json({
-      movieId: movieState.movieId,
-      isLocked: movieState.isLocked,
-      isBlurred: movieState.isBlurred
-    });
+    return NextResponse.json(movieState);
   } catch (error) {
     console.error('Error updating movie state:', error);
     return NextResponse.json({ error: 'Failed to update movie state' }, { status: 500 });

@@ -24,25 +24,11 @@ export async function middleware(request) {
 
   // If user is logged in
   if (token) {
-    const userEmail = token.email;
-    const adminEmail = process.env.ADMIN_EMAIL;
+    const isAdmin = token.isAdmin;
     
     console.log('Middleware - Token Details:', {
-      userEmail,
-      adminEmail,
-      tokenEmail: token.email,
-      tokenIsAdmin: token.isAdmin,
-      rawToken: token
-    });
-
-    const isAdmin = userEmail === adminEmail;
-    
-    console.log('Middleware - Email Comparison:', {
-      userEmail,
-      adminEmail,
       isAdmin,
-      exactMatch: userEmail === adminEmail,
-      lowercaseMatch: userEmail?.toLowerCase() === adminEmail?.toLowerCase()
+      rawToken: token
     });
 
     // Only redirect if trying to access admin routes without admin privileges

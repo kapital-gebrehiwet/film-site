@@ -16,15 +16,22 @@ export const authOptions = {
         try {
           await connectDB();
           
-          // Check if user already exists
+          // Check if user exists and is blocked
           const existingUser = await User.findOne({ email: user.email });
           
-          if (!existingUser) {
+          if (existingUser) {
+            if (existingUser.isBlocked) {
+              // Return false to prevent sign in and redirect to error page
+              return false;
+            }
+          } else {
             // Create new user
             await User.create({
               name: user.name,
               email: user.email,
               image: user.image,
+              isAdmin: false,
+              isBlocked: false
             });
           }
           
@@ -36,18 +43,25 @@ export const authOptions = {
       }
       return true;
     },
-    async session({ session, token }) {
-      if (session?.user) {
+    async jwt({ token, user }) {
+      if (user) {
         try {
           await connectDB();
-          const user = await User.findOne({ email: session.user.email });
-          if (user) {
-            session.user.id = user._id.toString();
-            session.user.isAdmin = user.isAdmin;
+          const dbUser = await User.findOne({ email: user.email });
+          if (dbUser) {
+            token.isAdmin = dbUser.isAdmin;
+            token.isBlocked = dbUser.isBlocked;
           }
         } catch (error) {
-          console.error("Error in session callback:", error);
+          console.error("Error in jwt callback:", error);
         }
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session?.user) {
+        session.user.isAdmin = token.isAdmin;
+        session.user.isBlocked = token.isBlocked;
       }
       return session;
     },
