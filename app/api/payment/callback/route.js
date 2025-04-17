@@ -2,10 +2,7 @@ import { NextResponse } from 'next/server';
 import connectDB from '../../../../lib/mongodb';
 import Payment from '../../../../models/Payment';
 import User from '../../../../models/User';
-import MovieState from '../../../../models/MovieState';
-
-const CHAPA_API_URL = 'https://api.chapa.co/v1/transaction/verify/';
-const CHAPA_API_KEY = process.env.CHAPA_SECRET_KEY;
+import { verifyPayment } from '../../../../lib/chapa';
 
 export async function POST(req) {
   try {
@@ -19,24 +16,14 @@ export async function POST(req) {
     console.log('Verifying payment for transaction:', tx_ref);
 
     // Verify payment with Chapa
-    const response = await fetch(`${CHAPA_API_URL}${tx_ref}`, {
-      headers: {
-        Authorization: `Bearer ${CHAPA_API_KEY}`,
-      },
-    });
-
-    const verificationData = await response.json();
+    const verificationData = await verifyPayment(tx_ref);
     console.log('Payment verification response:', verificationData);
-
-    if (!response.ok) {
-      throw new Error('Payment verification failed');
-    }
 
     // Update payment record
     const payment = await Payment.findOneAndUpdate(
       { tx_ref },
       {
-        status: verificationData.status,
+        status: verificationData.status === 'success' ? 'completed' : 'failed',
         verified: true,
         verificationData,
       },
@@ -49,28 +36,29 @@ export async function POST(req) {
 
     console.log('Updated payment record:', payment);
 
-    if (payment.status === 'success') {
+    if (verificationData.status === 'success') {
       console.log('Payment successful, updating user and movie state');
       
       // Update user's purchased movies
       const user = await User.findById(payment.userId);
+      if (!user) {
+        throw new Error('User not found');
+      }
+      
+      // Add movie to purchased movies if not already there
       if (!user.purchasedMovies.includes(payment.movieId)) {
         user.purchasedMovies.push(payment.movieId);
-        await user.save();
-        console.log('Updated user purchased movies:', user.purchasedMovies);
       }
-
-      // Update movie state
-      const movieState = await MovieState.findOneAndUpdate(
-        { userId: payment.userId, movieId: payment.movieId },
-        { isLocked: false, isBlurred: false },
-        { new: true, upsert: true }
-      );
-      console.log('Updated movie state:', {
-        movieId: payment.movieId,
-        isLocked: movieState.isLocked,
-        isBlurred: movieState.isBlurred
+      
+      // Update movie payment status
+      user.moviePayments.set(payment.movieId.toString(), {
+        status: 'completed',
+        paymentDate: new Date(),
+        tx_ref: payment.tx_ref
       });
+      
+      await user.save();
+      console.log('Updated user purchased movies:', user.purchasedMovies);
 
       return NextResponse.json({
         success: true,

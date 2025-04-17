@@ -1,103 +1,91 @@
-import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../../app/api/auth/[...nextauth]/route';
+import { NextResponse } from 'next/server';
 import connectDB from '../../../lib/mongodb';
-import Payment from '../../../models/Payment';
-import MovieState from '../../../models/MovieState';
-
-const CHAPA_API_URL = 'https://api.chapa.co/v1/transaction/initialize';
-const CHAPA_API_KEY = process.env.CHAPA_API_KEY;
+import User from '../../../models/User';
+import Movie from '../../../models/Movie';
+import mongoose from 'mongoose';
 
 export async function POST(request) {
   try {
+    console.log('POST /api/payment - Starting request');
+    
     const session = await getServerSession(authOptions);
     if (!session) {
+      console.log('POST /api/payment - No session found');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-
+    
+    console.log('POST /api/payment - Session found, user ID:', session.user.id);
+    
     const { movieId, amount } = await request.json();
-    if (!movieId || !amount) {
+    
+    if (!movieId || amount === undefined) {
+      console.log('POST /api/payment - Missing required fields');
       return NextResponse.json({ error: 'Movie ID and amount are required' }, { status: 400 });
     }
-
+    
+    console.log(`POST /api/payment - Processing payment for movie ${movieId} with amount ${amount}`);
+    
+    // Connect to database
+    console.log('POST /api/payment - Connecting to database');
     await connectDB();
-
-    // Create initial movie state if it doesn't exist
-    await MovieState.findOneAndUpdate(
-      {
-        userId: session.user.id,
-        movieId: movieId
-      },
-      {
-        isLocked: true,
-        isBlurred: true,
-        lastUpdated: new Date()
-      },
-      { upsert: true }
-    );
-
-    // Create payment record
-    const payment = await Payment.create({
-      userId: session.user.id,
-      movieId,
+    console.log('POST /api/payment - Database connected');
+    
+    // Find user
+    console.log('POST /api/payment - Finding user by ID:', session.user.id);
+    const user = await User.findById(session.user.id);
+    if (!user) {
+      console.error('POST /api/payment - User not found with ID:', session.user.id);
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+    console.log('POST /api/payment - User found:', user._id);
+    
+    // Find movie
+    console.log('POST /api/payment - Finding movie by ID:', movieId);
+    const movie = await Movie.findById(movieId);
+    if (!movie) {
+      console.error('POST /api/payment - Movie not found with ID:', movieId);
+      return NextResponse.json({ error: 'Movie not found' }, { status: 404 });
+    }
+    console.log('POST /api/payment - Movie found:', movie._id);
+    
+    // Check if user already purchased this movie
+    const alreadyPurchased = user.purchasedMovies.some(id => id.toString() === movieId);
+    if (alreadyPurchased) {
+      console.log('POST /api/payment - User already purchased this movie');
+      return NextResponse.json({ error: 'You already purchased this movie' }, { status: 400 });
+    }
+    
+    // Create a payment record
+    const paymentId = new mongoose.Types.ObjectId();
+    const payment = {
+      _id: paymentId,
+      movieId: new mongoose.Types.ObjectId(movieId),
       amount,
       status: 'pending',
-      tx_ref: `movie-${movieId}-${Date.now()}`,
-    });
-
-    console.log('Created payment record:', payment);
-
-    // Prepare payment request
-    const paymentRequest = {
-      amount: amount.toString(),
-      currency: 'ETB',
-      tx_ref: payment.tx_ref,
-      callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment/callback`,
-      return_url: `${process.env.NEXT_PUBLIC_BASE_URL}/user/get?payment=success&movieId=${payment.movieId}`,
-      customer: {
-        email: session.user.email,
-        name: session.user.name,
-      },
-      customizations: {
-        title: 'Movie Purchase',
-        description: `Payment for movie ${movieId}`,
-      },
+      createdAt: new Date()
     };
-
-    console.log('Payment request:', paymentRequest);
-
-    // Initialize payment with Chapa
-    const response = await fetch(CHAPA_API_URL, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${CHAPA_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(paymentRequest),
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to initialize payment');
-    }
-
-    const data = await response.json();
-    console.log('Chapa response:', data);
-
-    if (!data.data || !data.data.checkout_url) {
-      throw new Error('Invalid response from payment provider');
-    }
-
-    return NextResponse.json({
-      paymentUrl: data.data.checkout_url,
-      tx_ref: payment.tx_ref,
-      movieId: movieId,
-      state: {
-        isLocked: true,
-        isBlurred: true
-      }
-    });
+    
+    // Add payment to user's moviePayments array
+    user.moviePayments.push(payment);
+    await user.save();
+    
+    console.log('POST /api/payment - Payment record created:', paymentId);
+    
+    // In a real application, you would integrate with a payment gateway here
+    // For this example, we'll simulate a payment URL
+    const paymentUrl = `/payment/checkout?paymentId=${paymentId}&movieId=${movieId}&amount=${amount}`;
+    
+    console.log('POST /api/payment - Redirecting to payment URL:', paymentUrl);
+    
+    return NextResponse.json({ paymentUrl });
   } catch (error) {
-    console.error('Payment initialization error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('POST /api/payment - Error processing payment:', error);
+    return NextResponse.json({ 
+      error: 'Failed to process payment',
+      details: error.message || 'Unknown error',
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    }, { status: 500 });
   }
 } 

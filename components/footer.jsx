@@ -17,7 +17,7 @@ const Footer = () => {
             <p>
               <span className="text-xs tracking-wide text-gray-500 uppercase"> Call us </span>
               <a href="#" className="block text-2xl font-medium text-gray-900 hover:opacity-75 sm:text-3xl">
-                0123456789
+                0930259299
               </a>
             </p>
     

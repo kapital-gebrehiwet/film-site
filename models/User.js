@@ -22,6 +22,24 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  subscription: {
+    plan: {
+      type: String,
+      enum: ['free', 'basic', 'premium', 'vip'],
+      default: 'free'
+    },
+    status: {
+      type: String,
+      enum: ['active', 'inactive', 'expired'],
+      default: 'inactive'
+    },
+    startDate: Date,
+    endDate: Date,
+    autoRenew: {
+      type: Boolean,
+      default: false
+    }
+  },
   purchasedMovies: {
     type: [mongoose.Schema.Types.ObjectId],
     ref: 'Movie',
@@ -29,7 +47,17 @@ const userSchema = new mongoose.Schema({
   },
   moviePayments: {
     type: Map,
-    of: Boolean,
+    of: {
+      status: {
+        type: String,
+        enum: ['pending', 'completed', 'failed'],
+        default: 'pending'
+      },
+      paymentDate: Date,
+      tx_ref: String,
+      amount: Number,
+      paymentMethod: String
+    },
     default: {},
   },
   createdAt: {

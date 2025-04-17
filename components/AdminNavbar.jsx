@@ -14,7 +14,7 @@ const AdminNavbar = () => {
         <>
             <header className="bg-slate-600 border border-white text-white fixed top-0 left-0 right-0 z-50 dark:bg-gray-900 flex justify-between items-center h-16 px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center gap-8">
-                    <Link href="/user">Admin Home</Link>
+                    <Link href="/admin">Admin Home</Link>
                 </div>
                 
                 <div className="flex items-center gap-4">

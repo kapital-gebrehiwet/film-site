@@ -21,6 +21,23 @@ export default function AdminUsersPage() {
     isAdmin: false,
     isBlocked: false
   });
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    // Check if device is mobile
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    // Initial check
+    checkMobile();
+    
+    // Add event listener for window resize
+    window.addEventListener('resize', checkMobile);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -180,18 +197,18 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8">
-      <div className="container mx-auto px-4">
-        <div className="flex justify-between items-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">User Management</h1>
-          <div className="flex gap-4">
-            <div className="relative">
+    <div className="min-h-screen bg-gray-100 py-4 md:py-8">
+      <div className="container mx-auto px-2 md:px-4">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 md:mb-8 gap-4">
+          <h1 className="text-2xl md:text-3xl font-bold text-gray-800">User Management</h1>
+          <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
+            <div className="relative w-full md:w-auto">
               <input
                 type="text"
                 placeholder="Search users..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full border border-slate-600 text-black pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
               <svg
                 className="absolute left-3 top-2.5 h-5 w-5 text-gray-400"
@@ -209,7 +226,7 @@ export default function AdminUsersPage() {
             </div>
             <button
               onClick={() => setShowCreateForm(true)}
-              className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+              className="w-full md:w-auto bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
             >
               Add User
             </button>
@@ -218,9 +235,9 @@ export default function AdminUsersPage() {
 
         {/* Create User Form */}
         {showCreateForm && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-lg p-6 max-w-md w-full">
-              <h2 className="text-2xl font-bold mb-4">Create New User</h2>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg p-4 md:p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <h2 className="text-xl md:text-2xl font-bold mb-4">Create New User</h2>
               <form onSubmit={handleCreateUser}>
                 <div className="mb-4">
                   <label className="block text-gray-700 mb-2">Name</label>
@@ -264,17 +281,17 @@ export default function AdminUsersPage() {
                     <span>Is Blocked</span>
                   </label>
                 </div>
-                <div className="flex justify-end gap-4">
+                <div className="flex flex-col md:flex-row justify-end gap-2 md:gap-4">
                   <button
                     type="button"
                     onClick={() => setShowCreateForm(false)}
-                    className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                    className="w-full md:w-auto px-4 py-2 text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                    className="w-full md:w-auto px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                   >
                     Create User
                   </button>
@@ -286,27 +303,27 @@ export default function AdminUsersPage() {
 
         {/* Edit User Form */}
         {editingUser && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4">
-            <div className="bg-black text-white rounded-lg p-6 max-w-md w-full">
-              <h2 className="text-2xl font-bold mb-4">Edit User</h2>
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-black text-white rounded-lg p-4 md:p-6 max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <h2 className="text-xl md:text-2xl font-bold mb-4">Edit User</h2>
               <form onSubmit={handleUpdateUser}>
                 <div className="mb-4">
-                  <label className="block text-gray-700 mb-2">Name</label>
+                  <label className="block text-gray-300 mb-2">Name</label>
                   <input
                     type="text"
                     value={editingUser.name}
                     onChange={(e) => setEditingUser(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border rounded-lg bg-gray-800 text-white"
                     required
                   />
                 </div>
                 <div className="mb-4">
-                  <label className="block text-gray-700 mb-2">Email</label>
+                  <label className="block text-gray-300 mb-2">Email</label>
                   <input
                     type="email"
                     value={editingUser.email}
                     onChange={(e) => setEditingUser(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border rounded-lg bg-gray-800 text-white"
                     required
                   />
                 </div>
@@ -332,17 +349,17 @@ export default function AdminUsersPage() {
                     <span>Is Blocked</span>
                   </label>
                 </div>
-                <div className="flex justify-end gap-4">
+                <div className="flex flex-col md:flex-row justify-end gap-2 md:gap-4">
                   <button
                     type="button"
                     onClick={() => setEditingUser(null)}
-                    className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                    className="w-full md:w-auto px-4 py-2 text-gray-300 hover:text-white border border-gray-600 rounded-lg"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+                    className="w-full md:w-auto px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                   >
                     Update User
                   </button>
@@ -352,105 +369,181 @@ export default function AdminUsersPage() {
           </div>
         )}
 
-        {/* Users List */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  User
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Email
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Role
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Joined
-                </th>
-                <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUsers.map((user) => (
-                <tr key={user._id}>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="flex items-center">
-                      {user.image ? (
-                        <Image
-                          src={user.image}
-                          alt={user.name}
-                          width={40}
-                          height={40}
-                          className="rounded-full"
-                        />
-                      ) : (
-                        <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
-                          <span className="text-xl font-medium text-gray-600">
-                            {user.name[0]}
-                          </span>
+        {/* Users List - Desktop View */}
+        {!isMobile && (
+          <div className="bg-white rounded-lg shadow overflow-hidden hidden md:block">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    User
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Email
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Role
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Status
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Joined
+                  </th>
+                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Actions
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredUsers.map((user) => (
+                  <tr key={user._id}>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center">
+                        {user.image ? (
+                          <Image
+                            src={user.image}
+                            alt={user.name}
+                            width={40}
+                            height={40}
+                            className="rounded-full"
+                          />
+                        ) : (
+                          <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                            <span className="text-xl font-medium text-gray-600">
+                              {user.name[0]}
+                            </span>
+                          </div>
+                        )}
+                        <div className="ml-4">
+                          <div className="text-sm font-medium text-gray-900">{user.name}</div>
                         </div>
-                      )}
-                      <div className="ml-4">
-                        <div className="text-sm font-medium text-gray-900">{user.name}</div>
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{user.email}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        user.isAdmin ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {user.isAdmin ? 'Admin' : 'User'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        user.isBlocked ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
+                      }`}>
+                        {user.isBlocked ? 'Blocked' : 'Active'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {formatDate(user.createdAt)}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                      <button
+                        onClick={() => setEditingUser(user)}
+                        className="text-indigo-600 hover:text-indigo-900 mr-4"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleBlockUser(user._id, !user.isBlocked)}
+                        className={`${
+                          user.isBlocked
+                            ? "text-green-600 hover:text-green-900"
+                            : "text-red-600 hover:text-red-900"
+                        } mr-4`}
+                      >
+                        {user.isBlocked ? "Unblock" : "Block"}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(user._id)}
+                        className="text-red-600 hover:text-red-900"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {/* Users List - Mobile View */}
+        {isMobile && (
+          <div className="bg-white rounded-lg shadow overflow-hidden md:hidden">
+            <div className="divide-y divide-gray-200">
+              {filteredUsers.map((user) => (
+                <div key={user._id} className="p-4">
+                  <div className="flex items-center mb-2">
+                    {user.image ? (
+                      <Image
+                        src={user.image}
+                        alt={user.name}
+                        width={40}
+                        height={40}
+                        className="rounded-full"
+                      />
+                    ) : (
+                      <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center">
+                        <span className="text-xl font-medium text-gray-600">
+                          {user.name[0]}
+                        </span>
+                      </div>
+                    )}
+                    <div className="ml-3">
+                      <div className="text-sm font-medium text-gray-900">{user.name}</div>
+                      <div className="text-xs text-gray-500">{user.email}</div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">{user.email}</div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                       user.isAdmin ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
                     }`}>
                       {user.isAdmin ? 'Admin' : 'User'}
                     </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                    <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
                       user.isBlocked ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'
                     }`}>
                       {user.isBlocked ? 'Blocked' : 'Active'}
                     </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {formatDate(user.createdAt)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                    <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-gray-100 text-gray-800">
+                      Joined: {formatDate(user.createdAt)}
+                    </span>
+                  </div>
+                  
+                  <div className="flex justify-end gap-2 mt-2">
                     <button
                       onClick={() => setEditingUser(user)}
-                      className="text-indigo-600 hover:text-indigo-900 mr-4"
+                      className="px-3 py-1 text-xs text-indigo-600 hover:text-indigo-900 border border-indigo-300 rounded"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => handleBlockUser(user._id, !user.isBlocked)}
-                      className={`${
+                      className={`px-3 py-1 text-xs border rounded ${
                         user.isBlocked
-                          ? "text-green-600 hover:text-green-900"
-                          : "text-red-600 hover:text-red-900"
-                      } mr-4`}
+                          ? "text-green-600 hover:text-green-900 border-green-300"
+                          : "text-red-600 hover:text-red-900 border-red-300"
+                      }`}
                     >
                       {user.isBlocked ? "Unblock" : "Block"}
                     </button>
                     <button
                       onClick={() => handleDeleteUser(user._id)}
-                      className="text-red-600 hover:text-red-900"
+                      className="px-3 py-1 text-xs text-red-600 hover:text-red-900 border border-red-300 rounded"
                     >
                       Delete
                     </button>
-                  </td>
-                </tr>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-        </div>
+            </div>
+          </div>
+        )}
 
         {filteredUsers.length === 0 && (
           <div className="text-center py-12">
