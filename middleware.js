@@ -12,17 +12,13 @@ export async function middleware(request) {
   // Debug logs
   console.log('Middleware - Path:', pathname);
   console.log('Middleware - Full Token:', JSON.stringify(token, null, 2));
-  console.log('Middleware - Environment:', {
-    ADMIN_EMAIL: process.env.ADMIN_EMAIL,
-    NODE_ENV: process.env.NODE_ENV,
-  });
 
   // If user is not logged in and trying to access protected routes
   if (!token && (pathname.startsWith('/admin') || pathname.startsWith('/user'))) {
     return NextResponse.redirect(new URL('/', request.url));
   }
 
-  // If user is logged in
+  // If user is logged in, check session expiration
   if (token) {
     const isAdmin = token.isAdmin;
     
@@ -37,7 +33,7 @@ export async function middleware(request) {
       return NextResponse.redirect(new URL('/admin', request.url));
     }
 
-    // Only redirect if trying to access admin routes without admin privileges
+    // On
     if (pathname.startsWith('/admin') && !isAdmin) {
       console.log('Middleware - Redirecting non-admin from admin route to user');
       return NextResponse.redirect(new URL('/user', request.url));

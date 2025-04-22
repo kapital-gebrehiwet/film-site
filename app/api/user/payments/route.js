@@ -4,24 +4,91 @@ import { NextResponse } from 'next/server';
 import connectDB from '../../../../lib/mongodb';
 import Payment from '../../../../models/Payment';
 import User from '../../../../models/User';
+import Movie from '../../../../models/Movie';
 
 export async function GET() {
   try {
+    // Check authentication
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    await connectDB();
+    // Connect to database
+    try {
+      await connectDB();
+    } catch (dbError) {
+      console.error('Database connection error:', dbError);
+      return NextResponse.json({ 
+        error: 'Database connection failed',
+        details: dbError.message 
+      }, { status: 500 });
+    }
 
-    const payments = await Payment.find({ userId: session.user.id })
-      .sort({ paymentDate: -1 })
-      .select('-__v');
+    // Find user and their payments
+    try {
+      const user = await User.findById(session.user.id)
+        .select('moviePayments')
+        .lean();
 
-    return NextResponse.json(payments);
+      if (!user) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+
+      // Handle case where moviePayments is undefined
+      if (!user.moviePayments) {
+        return NextResponse.json([]);
+      }
+
+      // Get all movie IDs from payments
+      const movieIds = Object.keys(user.moviePayments);
+      
+      // Fetch all movies in one query
+      const movies = await Movie.find({ _id: { $in: movieIds } })
+        .select('_id fee title')
+        .lean();
+      
+      // Create a map of movie details for quick lookup
+      const movieMap = movies.reduce((acc, movie) => {
+        acc[movie._id.toString()] = movie;
+        return acc;
+      }, {});
+
+      // Convert moviePayments object to array and add movieId and movie details
+      const payments = Object.entries(user.moviePayments).map(([movieId, payment]) => {
+        const movie = movieMap[movieId];
+        return {
+          ...payment,
+          movieId,
+          tx_ref: payment.tx_ref || 'N/A',
+          amount: payment.amount || movie?.fee || 0,
+          status: payment.status || 'unknown',
+          paymentDate: payment.paymentDate || null,
+          movieTitle: movie?.title || 'Unknown Movie'
+        };
+      });
+
+      // Sort payments by date, most recent first
+      payments.sort((a, b) => {
+        if (!a.paymentDate) return 1;
+        if (!b.paymentDate) return -1;
+        return new Date(b.paymentDate) - new Date(a.paymentDate);
+      });
+
+      return NextResponse.json(payments);
+    } catch (userError) {
+      console.error('Error fetching user data:', userError);
+      return NextResponse.json({ 
+        error: 'Failed to fetch user data',
+        details: userError.message 
+      }, { status: 500 });
+    }
   } catch (error) {
-    console.error('Error fetching payments:', error);
-    return NextResponse.json({ error: 'Failed to fetch payments' }, { status: 500 });
+    console.error('Unexpected error in GET /api/user/payments:', error);
+    return NextResponse.json({ 
+      error: 'Internal server error',
+      details: error.message 
+    }, { status: 500 });
   }
 }
 

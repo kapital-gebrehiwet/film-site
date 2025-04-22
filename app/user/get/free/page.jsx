@@ -66,7 +66,7 @@ export default function FreeMoviesPage() {
 
   const handlePayment = async (movieId) => {
     if (!session?.user) {
-      router.push('/login');
+      router.push('/');
       return;
     }
 
@@ -79,6 +79,8 @@ export default function FreeMoviesPage() {
         throw new Error('Movie not found');
       }
       
+      console.log('Initiating payment for movie:', movieId, 'with fee:', movie.fee);
+      
       // Create payment session
       const response = await fetch('/api/payment/initiate', {
         method: 'POST',
@@ -88,27 +90,34 @@ export default function FreeMoviesPage() {
         body: JSON.stringify({
           movieId,
           amount: movie.fee,
-          email: session.user.email
+          email: session.user.email,
+          type: 'movie',
+          userEmail: session.user.email
         }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create payment session');
-      }
-
       const data = await response.json();
+      console.log('Payment initiation response:', data);
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create payment session');
+      }
       
       // Verify the payment session was created successfully
-      if (!data.checkoutUrl || !data.tx_ref) {
-        throw new Error('Invalid payment session response');
+      if (!data.checkoutUrl) {
+        console.error('Invalid payment response:', data);
+        throw new Error('Invalid payment session response: Missing checkout URL');
       }
+
+      // Ensure we have a transaction reference
+      const tx_ref = data.tx_ref || `tx_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
       // Store payment intent in session storage
       sessionStorage.setItem('pendingPaymentMovieId', movieId);
-      sessionStorage.setItem('pendingPaymentTxRef', data.tx_ref);
+      sessionStorage.setItem('pendingPaymentTxRef', tx_ref);
       sessionStorage.setItem('paymentStartTime', Date.now().toString());
 
+      console.log('Redirecting to payment URL:', data.checkoutUrl);
       // Redirect to Chapa checkout
       window.location.href = data.checkoutUrl;
     } catch (error) {
@@ -156,65 +165,29 @@ export default function FreeMoviesPage() {
           paymentStatus = data.status;
           
           if (paymentStatus === 'success') {
-            // Get current user profile
-            const userResponse = await fetch('/api/user/profile');
-            if (!userResponse.ok) throw new Error('Failed to fetch user profile');
-            const userData = await userResponse.json();
+            console.log('Payment successful, updating movie states for:', pendingMovieId);
             
-            // Update purchased movies list
-            const currentPurchasedMovies = userData.purchasedMovies || [];
-            const updatedPurchasedMovies = [...new Set([...currentPurchasedMovies, pendingMovieId])];
-            
-            // Get movie details
-            let movieTitle = 'Unknown Movie';
-            try {
-              const movieResponse = await fetch(`/api/movies/${pendingMovieId}`);
-              if (movieResponse.ok) {
-                const movieData = await movieResponse.json();
-                movieTitle = movieData.title;
-              }
-            } catch (movieError) {
-              console.error('Error fetching movie details:', movieError);
-            }
-            
-            // Update user profile
-            const updateResponse = await fetch('/api/user/profile', {
-              method: 'PUT',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                purchasedMovies: updatedPurchasedMovies,
-                notifications: {
-                  ...userData.notifications,
-                  purchaseConfirmation: true,
-                  lastPurchase: {
-                    movieId: pendingMovieId,
-                    movieTitle: movieTitle,
-                    purchaseDate: new Date().toISOString()
-                  }
+            // Update movie states
+            setMovieStates(prevStates => {
+              const newStates = {
+                ...prevStates,
+                [pendingMovieId]: {
+                  isLocked: false,
+                  isBlurred: false
                 }
-              }),
+              };
+              console.log('Updated movie states:', newStates);
+              return newStates;
+            });
+
+            // Update purchased movies list
+            setPurchasedMovies(prev => {
+              const updated = [...new Set([...prev, pendingMovieId])];
+              console.log('Updated purchased movies:', updated);
+              return updated;
             });
             
-            if (!updateResponse.ok) {
-              throw new Error('Failed to update user profile');
-            }
-            
-            // Update local state
-            setPurchasedMovies(updatedPurchasedMovies);
-            setMovieStates(prev => ({
-              ...prev,
-              [pendingMovieId]: {
-                isLocked: false,
-                isBlurred: false
-              }
-            }));
-            
-            // Force session update
-            await update();
-            
-            // Clear payment data
+            // Clear payment data from session storage
             sessionStorage.removeItem('pendingPaymentMovieId');
             sessionStorage.removeItem('pendingPaymentTxRef');
             sessionStorage.removeItem('paymentStartTime');
@@ -222,7 +195,7 @@ export default function FreeMoviesPage() {
             // Show success message
             toast.success('Payment successful! The movie is now unlocked.');
             
-            // Fetch updated movies data instead of refreshing the page
+            // Fetch updated movies data
             await fetchMovies();
             return;
           } else if (paymentStatus === 'failed') {
@@ -253,11 +226,43 @@ export default function FreeMoviesPage() {
   };
 
   useEffect(() => {
-    console.log('Session changed:', session);
-    if (session) {
+    if (status === 'unauthenticated') {
+      router.push('/login');
+    } else {
       fetchMovies();
     }
-  }, [session]);
+  }, [status]);
+
+  // Add new useEffect for payment verification
+  useEffect(() => {
+    const verifyPayment = async () => {
+      const { searchParams } = new URL(window.location.href);
+      const tx_ref = searchParams.get('tx_ref');
+      
+      if (tx_ref) {
+        try {
+          console.log('Verifying payment with tx_ref:', tx_ref);
+          const response = await fetch(`/api/payment/verify?tx_ref=${tx_ref}`);
+          const data = await response.json();
+          
+          if (data.success) {
+            console.log('Payment verified successfully:', data);
+            toast.success('Payment verified successfully!');
+            // Refresh movies to update locked status
+            fetchMovies();
+          } else {
+            console.error('Payment verification failed:', data);
+            toast.error('Failed to verify payment');
+          }
+        } catch (error) {
+          console.error('Error verifying payment:', error);
+          toast.error('Error verifying payment');
+        }
+      }
+    };
+
+    verifyPayment();
+  }, []);
 
   useEffect(() => {
     if (session) {

@@ -192,7 +192,7 @@ const AdminDashboard = () => {
     
   ];
   return (
-    <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
+    <div className={`min-h-screen admin-dashboard ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
       {/* Mobile menu button */}
       <AdminNavbar/>
       <button
@@ -304,7 +304,7 @@ const AdminDashboard = () => {
                         <td className="py-3 px-4">{movie.genre}</td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">
-                            <span>$</span>
+                            <span>ETB</span>
                             <input
                               type="number"
                               value={feeUpdates[movie._id] ?? movie.fee ?? 0}

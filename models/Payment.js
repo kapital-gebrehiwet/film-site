@@ -6,9 +6,8 @@ const PaymentSchema = new mongoose.Schema({
     ref: 'User',
     required: true,
   },
-  movieId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Movie',
+  userEmail: {
+    type: String,
     required: true,
   },
   amount: {
@@ -21,7 +20,7 @@ const PaymentSchema = new mongoose.Schema({
   },
   status: {
     type: String,
-    enum: ['pending', 'completed', 'failed'],
+    enum: ['pending', 'completed', 'failed', 'refunded'],
     default: 'pending',
   },
   tx_ref: {
@@ -29,10 +28,41 @@ const PaymentSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
-  paymentDate: {
+  type: {
+    type: String,
+    enum: ['movie', 'subscription'],
+    required: true,
+  },
+  purchasedMovies: [{
+    movieId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Movie',
+    },
+    price: Number,
+    purchaseDate: {
+      type: Date,
+      default: Date.now,
+    }
+  }],
+  subscription: {
+    plan: {
+      type: String,
+      enum: ['free', 'basic', 'premium', 'vip'],
+    },
+    startDate: Date,
+    endDate: Date,
+  },
+  refundReason: String,
+  refundedAt: Date,
+  refundedBy: String,
+  createdAt: {
     type: Date,
     default: Date.now,
   },
+  updatedAt: {
+    type: Date,
+    default: Date.now,
+  }
 });
 
 export default mongoose.models.Payment || mongoose.model('Payment', PaymentSchema); 

@@ -22,6 +22,14 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false,
   },
+  lastLogin: {
+    type: Date,
+    default: Date.now,
+  },
+  lastActivity: {
+    type: Date,
+    default: Date.now,
+  },
   subscription: {
     plan: {
       type: String,
@@ -59,6 +67,52 @@ const userSchema = new mongoose.Schema({
       paymentMethod: String
     },
     default: {},
+  },
+  notifications: {
+    email: {
+      type: Boolean,
+      default: true
+    },
+    push: {
+      type: Boolean,
+      default: true
+    },
+    marketing: {
+      type: Boolean,
+      default: false
+    },
+    purchaseConfirmation: {
+      type: Boolean,
+      default: true
+    },
+    newMovies: {
+      type: Boolean,
+      default: true
+    },
+    lastPurchase: {
+      movieId: mongoose.Schema.Types.ObjectId,
+      movieTitle: String,
+      purchaseDate: Date
+    },
+    movieNotifications: [{
+      movieId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Movie'
+      },
+      title: String,
+      fee: {
+        type: Number,
+        default: 0
+      },
+      addedAt: {
+        type: Date,
+        default: Date.now
+      },
+      isRead: {
+        type: Boolean,
+        default: false
+      }
+    }]
   },
   createdAt: {
     type: Date,

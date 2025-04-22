@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '../../auth/[...nextauth]/route';
 import Movie from '../../../../models/Movie';
+import User from '../../../../models/User';
 import connectDB from '../../../../lib/mongodb';
 
 // GET all movies from database
@@ -62,6 +63,19 @@ export async function POST(request) {
     const movie = new Movie(movieData);
     await movie.save();
     console.log('Movie saved successfully:', movie);
+
+    // Send notifications to users who have enabled new movie notifications
+    const users = await User.find({ 'notifications.newMovies': true });
+    for (const user of users) {
+      user.notifications.movieNotifications.push({
+        movieId: movie._id,
+        title: movie.title,
+        fee: movie.fee || 0,
+        addedAt: new Date(),
+        isRead: false
+      });
+      await user.save();
+    }
 
     return NextResponse.json(movie);
   } catch (error) {

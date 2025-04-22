@@ -134,3 +134,15 @@ body {
     background-repeat: no-repeat;
   }
 }
+
+/* Hide scrollbar for Chrome, Safari and Opera */
+.admin-dashboard, .user-dashboard,
+.admin-dashboard *, .user-dashboard * {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.admin-dashboard::-webkit-scrollbar, .user-dashboard::-webkit-scrollbar,
+.admin-dashboard *::-webkit-scrollbar, .user-dashboard *::-webkit-scrollbar {
+  display: none; /* Chrome, Safari and Opera */
+}

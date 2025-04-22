@@ -5,6 +5,7 @@ import connectDB from '../../../../lib/mongodb';
 import Payment from '../../../../models/Payment';
 import User from '../../../../models/User';
 import { verifyPayment } from '../../../../lib/chapa';
+import mongoose from 'mongoose';
 
 export async function GET(request) {
   try {
@@ -23,16 +24,37 @@ export async function GET(request) {
 
     await connectDB();
 
-    // Find payment record
-    const payment = await Payment.findOne({ 
-      userId: session.user.id,
+    // Find user first to get the correct ID
+    const user = await User.findById(session.user.id);
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    console.log('Looking for payment record with:', {
+      userId: user._id.toString(),
       movieId,
       tx_ref
     });
 
+    // Find payment record
+    const payment = await Payment.findOne({ 
+      userId: new mongoose.Types.ObjectId(user._id),
+      movieId: new mongoose.Types.ObjectId(movieId),
+      tx_ref
+    });
+
     if (!payment) {
-      return NextResponse.json({ error: 'Payment record not found' }, { status: 404 });
+      console.log('Payment record not found, returning pending status');
+      return NextResponse.json({ status: 'pending' });
     }
+
+    console.log('Found payment record:', {
+      id: payment._id,
+      status: payment.status,
+      userId: payment.userId.toString(),
+      movieId: payment.movieId.toString(),
+      tx_ref: payment.tx_ref
+    });
 
     // If payment is already completed, return success
     if (payment.status === 'completed') {
@@ -56,12 +78,6 @@ export async function GET(request) {
         await payment.save();
 
         // Update user's purchased movies
-        const user = await User.findById(session.user.id);
-        if (!user) {
-          throw new Error('User not found');
-        }
-        
-        // Add movie to purchased movies if not already there
         if (!user.purchasedMovies.includes(payment.movieId)) {
           user.purchasedMovies.push(payment.movieId);
         }

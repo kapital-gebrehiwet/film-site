@@ -20,7 +20,9 @@ export default function SettingsPage() {
     notifications: {
       email: true,
       push: true,
-      marketing: false
+      marketing: false,
+      newMovies: true,
+      movieNotifications: []
     }
   });
   const fileInputRef = useRef(null);
@@ -37,6 +39,35 @@ export default function SettingsPage() {
         if (!response.ok) throw new Error('Failed to fetch profile data');
         const data = await response.json();
         setProfile(data);
+        
+        // Mark all notifications as read when viewed
+        if (data.notifications?.movieNotifications?.some(notification => !notification.isRead)) {
+          const updatedNotifications = data.notifications.movieNotifications.map(notification => ({
+            ...notification,
+            isRead: true
+          }));
+
+          await fetch('/api/user/profile', {
+            method: 'PUT',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              notifications: {
+                ...data.notifications,
+                movieNotifications: updatedNotifications
+              }
+            }),
+          });
+
+          setProfile(prev => ({
+            ...prev,
+            notifications: {
+              ...prev.notifications,
+              movieNotifications: updatedNotifications
+            }
+          }));
+        }
       } catch (error) {
         console.error('Error fetching profile data:', error);
         toast.error('Failed to load profile data');
@@ -66,6 +97,41 @@ export default function SettingsPage() {
         [type]: !prev.notifications[type]
       }
     }));
+  };
+
+  const handleMarkAsRead = async (movieId) => {
+    try {
+      const updatedNotifications = profile.notifications.movieNotifications.map(notification => 
+        notification.movieId === movieId ? { ...notification, isRead: true } : notification
+      );
+
+      const response = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          notifications: {
+            ...profile.notifications,
+            movieNotifications: updatedNotifications
+          }
+        }),
+      });
+
+      if (response.ok) {
+        setProfile(prev => ({
+          ...prev,
+          notifications: {
+            ...prev.notifications,
+            movieNotifications: updatedNotifications
+          }
+        }));
+        toast.success('Notification marked as read');
+      }
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      toast.error('Failed to mark notification as read');
+    }
   };
 
   const handleImageClick = () => {
@@ -259,6 +325,26 @@ export default function SettingsPage() {
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div>
+                          <h3 className="font-medium">New Movie Notifications</h3>
+                          <p className="text-sm text-gray-500">Get notified when new movies are added</p>
+                        </div>
+                        <label className="relative inline-flex items-center cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={profile.notifications.newMovies}
+                            onChange={() => handleNotificationChange('newMovies')}
+                            className="sr-only peer"
+                          />
+                          <div className={`w-11 h-6 rounded-full peer ${
+                            profile.notifications.newMovies
+                              ? 'bg-primary'
+                              : isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
+                          }`}></div>
+                        </label>
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <div>
                           <h3 className="font-medium">Email Notifications</h3>
                           <p className="text-sm text-gray-500">Receive updates via email</p>
                         </div>
@@ -315,6 +401,47 @@ export default function SettingsPage() {
                               : isDarkMode ? 'bg-gray-700' : 'bg-gray-200'
                           }`}></div>
                         </label>
+                      </div>
+                    </div>
+
+                    {/* Movie Notifications List */}
+                    <div className="mt-8">
+                      <h3 className="text-xl font-semibold mb-4">Recent Movie Notifications</h3>
+                      <div className="space-y-4">
+                        {profile.notifications.movieNotifications?.length > 0 ? (
+                          profile.notifications.movieNotifications.map((notification) => (
+                            <div
+                              key={notification.movieId}
+                              className={`p-4 rounded-lg ${
+                                isDarkMode ? 'bg-gray-700' : 'bg-gray-100'
+                              } ${!notification.isRead ? 'border-l-4 border-primary' : ''}`}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <h4 className="font-medium">{notification.title}</h4>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <p className="text-sm text-gray-500">
+                                      Added on {new Date(notification.addedAt).toLocaleDateString()}
+                                    </p>
+                                    <span className="text-sm font-medium text-primary">
+                                      {notification.fee === 0 ? 'Free' : `$${notification.fee}`}
+                                    </span>
+                                  </div>
+                                </div>
+                                {!notification.isRead && (
+                                  <button
+                                    onClick={() => handleMarkAsRead(notification.movieId)}
+                                    className="text-sm text-primary hover:text-primary/80"
+                                  >
+                                    Mark as read
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <p className="text-gray-500 text-center py-4">No movie notifications yet</p>
+                        )}
                       </div>
                     </div>
                   </div>
