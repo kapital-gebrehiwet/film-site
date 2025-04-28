@@ -111,6 +111,11 @@ const userSchema = new mongoose.Schema({
       isRead: {
         type: Boolean,
         default: false
+      },
+      type: {
+        type: String,
+        enum: ['new', 'unlock'],
+        default: 'new'
       }
     }]
   },

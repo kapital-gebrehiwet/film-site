@@ -122,7 +122,29 @@ export default function FreeMoviesPage() {
       window.location.href = data.checkoutUrl;
     } catch (error) {
       console.error('Payment error:', error);
-      toast.error(error.message || 'Failed to initiate payment. Please try again.');
+      toast.error(
+        <div className="flex items-center gap-3">
+          <div className="bg-red-100 p-2 rounded-full">
+            <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <p className="font-semibold">Payment Failed</p>
+            <p className="text-sm">{error.message || 'Failed to initiate payment. Please try again.'}</p>
+          </div>
+        </div>,
+        {
+          duration: 4000,
+          position: 'top-right',
+          style: {
+            background: '#EF4444',
+            color: 'white',
+            padding: '1rem',
+            borderRadius: '0.5rem',
+          },
+        }
+      );
       
       // Clean up session storage on error
       sessionStorage.removeItem('pendingPaymentMovieId');
@@ -167,6 +189,37 @@ export default function FreeMoviesPage() {
           if (paymentStatus === 'success') {
             console.log('Payment successful, updating movie states for:', pendingMovieId);
             
+            // Find the movie details
+            const movie = movies.find(m => m._id === pendingMovieId);
+            
+            // Show success notification with movie details
+            toast.success(
+              <div className="flex items-center gap-3">
+                <div className="relative w-12 h-12">
+                  <Image
+                    src={`https://image.tmdb.org/t/p/w500${movie.posterPath}`}
+                    alt={movie.title}
+                    fill
+                    className="object-cover rounded"
+                  />
+                </div>
+                <div>
+                  <p className="font-semibold">Movie Unlocked!</p>
+                  <p className="text-sm text-gray-600">{movie.title} is now available to watch</p>
+                </div>
+              </div>,
+              {
+                duration: 4000,
+                position: 'top-right',
+                style: {
+                  background: '#10B981',
+                  color: 'white',
+                  padding: '1rem',
+                  borderRadius: '0.5rem',
+                },
+              }
+            );
+            
             // Update movie states
             setMovieStates(prevStates => {
               const newStates = {
@@ -192,9 +245,6 @@ export default function FreeMoviesPage() {
             sessionStorage.removeItem('pendingPaymentTxRef');
             sessionStorage.removeItem('paymentStartTime');
             
-            // Show success message
-            toast.success('Payment successful! The movie is now unlocked.');
-            
             // Fetch updated movies data
             await fetchMovies();
             return;
@@ -212,14 +262,58 @@ export default function FreeMoviesPage() {
       }
       
       if (paymentStatus === 'failed') {
-        toast.error('Payment failed. Please try again.');
+        toast.error(
+          <div className="flex items-center gap-3">
+            <div className="bg-red-100 p-2 rounded-full">
+              <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+            <div>
+              <p className="font-semibold">Payment Failed</p>
+              <p className="text-sm">Please try again</p>
+            </div>
+          </div>,
+          {
+            duration: 4000,
+            position: 'top-right',
+            style: {
+              background: '#EF4444',
+              color: 'white',
+              padding: '1rem',
+              borderRadius: '0.5rem',
+            },
+          }
+        );
         sessionStorage.removeItem('pendingPaymentMovieId');
         sessionStorage.removeItem('pendingPaymentTxRef');
         sessionStorage.removeItem('paymentStartTime');
       }
     } catch (error) {
       console.error('Error checking payment status:', error);
-      toast.error('There was an error checking your payment status. Please refresh the page.');
+      toast.error(
+        <div className="flex items-center gap-3">
+          <div className="bg-red-100 p-2 rounded-full">
+            <svg className="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+          </div>
+          <div>
+            <p className="font-semibold">Error</p>
+            <p className="text-sm">There was an error checking your payment status. Please refresh the page.</p>
+          </div>
+        </div>,
+        {
+          duration: 4000,
+          position: 'top-right',
+          style: {
+            background: '#EF4444',
+            color: 'white',
+            padding: '1rem',
+            borderRadius: '0.5rem',
+          },
+        }
+      );
     } finally {
       setPaymentProcessing(false);
     }

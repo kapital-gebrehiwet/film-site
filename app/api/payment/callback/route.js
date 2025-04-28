@@ -3,6 +3,7 @@ import connectDB from '../../../../lib/mongodb';
 import Payment from '../../../../models/Payment';
 import User from '../../../../models/User';
 import { verifyPayment } from '../../../../lib/chapa';
+import Movie from '../../../../models/Movie';
 
 export async function POST(req) {
   try {
@@ -48,6 +49,19 @@ export async function POST(req) {
       // Add movie to purchased movies if not already there
       if (!user.purchasedMovies.includes(payment.movieId)) {
         user.purchasedMovies.push(payment.movieId);
+        
+        // Add unlock notification
+        const movie = await Movie.findById(payment.movieId);
+        if (movie) {
+          user.notifications.movieNotifications.push({
+            movieId: movie._id,
+            title: movie.title,
+            fee: movie.fee || 0,
+            addedAt: new Date(),
+            isRead: false,
+            type: 'unlock' // Add type to distinguish from new movie notifications
+          });
+        }
       }
       
       // Update movie payment status

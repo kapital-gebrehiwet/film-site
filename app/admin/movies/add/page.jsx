@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { toast } from 'react-hot-toast';
 
 export default function AddMoviesPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -60,8 +61,46 @@ export default function AddMoviesPage() {
       }
 
       setSelectedMovies([...selectedMovies, movie.id]);
+      
+      // Show success notification with movie details
+      toast.success(
+        <div className="flex items-center gap-3">
+          <div className="relative w-12 h-12">
+            <Image
+              src={`https://image.tmdb.org/t/p/w500${movie.poster_path}`}
+              alt={movie.title}
+              fill
+              className="object-cover rounded"
+            />
+          </div>
+          <div>
+            <p className="font-semibold">Movie Added Successfully!</p>
+            <p className="text-sm text-gray-600">{movie.title}</p>
+          </div>
+        </div>,
+        {
+          duration: 4000,
+          position: 'top-right',
+          style: {
+            background: '#10B981',
+            color: 'white',
+            padding: '1rem',
+            borderRadius: '0.5rem',
+          },
+        }
+      );
     } catch (err) {
       setError(err.message);
+      toast.error(err.message, {
+        duration: 4000,
+        position: 'top-right',
+        style: {
+          background: '#EF4444',
+          color: 'white',
+          padding: '1rem',
+          borderRadius: '0.5rem',
+        },
+      });
     }
   };
 

@@ -72,7 +72,8 @@ export async function POST(request) {
         title: movie.title,
         fee: movie.fee || 0,
         addedAt: new Date(),
-        isRead: false
+        isRead: false,
+        type: 'new'
       });
       await user.save();
     }
