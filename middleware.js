@@ -15,7 +15,7 @@ export async function middleware(request) {
 
   // If user is not logged in and trying to access protected routes
   if (!token && (pathname.startsWith('/admin') || pathname.startsWith('/user'))) {
-    return NextResponse.redirect(new URL('/auth/signin', request.url));
+    return NextResponse.redirect(new URL('/api/auth/signin', request.url));
   }
 
   // If user is logged in, check session expiration
