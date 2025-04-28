@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import Logo from '../components/logo';
 import Footer from '../components/footer';
 import Login from '../components/login';
-import { authOptions } from "./api/auth/[...nextauth]/route";
+import { authOptions } from "../lib/auth";
 
 // Server component
 export default async function HomePage() {
