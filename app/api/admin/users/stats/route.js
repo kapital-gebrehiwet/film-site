@@ -1,7 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { NextResponse } from "next/server";
 import { authOptions } from "../../../../../app/api/auth/[...nextauth]/route";
-import connectDB from "../../../../../lib/db";
+import connectDB from "../../../../../lib/mongodb";
 import User from "../../../../../models/User";
 import Movie from "../../../../../models/Movie";
 
