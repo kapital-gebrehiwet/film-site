@@ -15,7 +15,7 @@ export async function middleware(request) {
 
   // If user is not logged in and trying to access protected routes
   if (!token && (pathname.startsWith('/admin') || pathname.startsWith('/user'))) {
-    return NextResponse.redirect(new URL('/', request.url));
+    return NextResponse.redirect(new URL('/auth/signin', request.url));
   }
 
   // If user is logged in, check session expiration
@@ -33,13 +33,13 @@ export async function middleware(request) {
       return NextResponse.redirect(new URL('/admin', request.url));
     }
 
-    // On
+    // Redirect non-admin users trying to access admin routes to user dashboard
     if (pathname.startsWith('/admin') && !isAdmin) {
       console.log('Middleware - Redirecting non-admin from admin route to user');
       return NextResponse.redirect(new URL('/user', request.url));
     }
 
-    // If on home page, redirect based on role
+    // If on home page and logged in, redirect based on role
     if (pathname === '/') {
       console.log('Middleware - Home page redirect based on role:', isAdmin ? 'admin' : 'user');
       return NextResponse.redirect(new URL(isAdmin ? '/admin' : '/user', request.url));
