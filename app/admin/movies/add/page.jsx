@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { toast } from 'react-hot-toast';
+import {Input} from '../../../../components/ui/input'
 
 export default function AddMoviesPage() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -110,7 +111,7 @@ export default function AddMoviesPage() {
       
       <div className="mb-6">
         <div className="flex gap-4">
-          <input
+          <Input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}

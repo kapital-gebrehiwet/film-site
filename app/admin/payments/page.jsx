@@ -15,6 +15,37 @@ import {
   ChevronLeft,
   ChevronRight
 } from 'lucide-react';
+import { Input } from '../../../components/ui/input'
+
+// Helper for ISO week comparison
+function getISOWeek(date) {
+  const d = new Date(date);
+  d.setHours(0, 0, 0, 0);
+  d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+  const yearStart = new Date(d.getFullYear(), 0, 1);
+  const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+  return [d.getFullYear(), weekNo];
+}
+
+function isSameWeek(date1, date2) {
+  const [y1, w1] = getISOWeek(date1);
+  const [y2, w2] = getISOWeek(date2);
+  return y1 === y2 && w1 === w2;
+}
+
+function isSameDay(date1, date2) {
+  return date1.getFullYear() === date2.getFullYear() &&
+    date1.getMonth() === date2.getMonth() &&
+    date1.getDate() === date2.getDate();
+}
+
+function isSameMonth(date1, date2) {
+  return date1.getFullYear() === date2.getFullYear() && date1.getMonth() === date2.getMonth();
+}
+
+function isSameYear(date1, date2) {
+  return date1.getFullYear() === date2.getFullYear();
+}
 
 const AdminPaymentsPage = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -38,6 +69,7 @@ const AdminPaymentsPage = () => {
   const paymentsPerPage = 10;
 
   // Search and filter state
+  const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [dateFilter, setDateFilter] = useState('all');
 
@@ -81,7 +113,7 @@ const AdminPaymentsPage = () => {
     };
 
     fetchPaymentsData();
-  }, [status, currentPage, searchQuery, dateFilter]);
+  }, [status, currentPage, searchQuery]);
 
   const handleExportCSV = async () => {
     try {
@@ -118,6 +150,34 @@ const AdminPaymentsPage = () => {
     });
   };
 
+  // Filter payments by date
+  const filterPaymentsByDate = (payments) => {
+    if (dateFilter === 'all') return payments;
+    const now = new Date();
+    return payments.map(user => ({
+      ...user,
+      purchases: user.purchases.filter(purchase => {
+        const purchaseDate = new Date(purchase.purchaseDate);
+        if (dateFilter === 'today') return isSameDay(purchaseDate, now);
+        if (dateFilter === 'week') return isSameWeek(purchaseDate, now);
+        if (dateFilter === 'month') return isSameMonth(purchaseDate, now);
+        if (dateFilter === 'year') return isSameYear(purchaseDate, now);
+        return true;
+      })
+    })).filter(user => user.purchases.length > 0);
+  };
+
+  // Filter payments by search
+  const filterPaymentsBySearch = (payments) => {
+    if (!searchQuery) return payments;
+    return payments.filter(user =>
+      user.user.email.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
+
+  // Compose filters
+  const filteredPayments = filterPaymentsBySearch(filterPaymentsByDate(payments));
+
   if (loading) {
     return (
       <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
@@ -131,22 +191,20 @@ const AdminPaymentsPage = () => {
 
   return (
     <div className={`min-h-screen ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
-      <AdminNavbar />
-
-      {/* Mobile menu button */}
-      <button
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className={`fixed top-4 left-4 z-50 md:hidden ${isDarkMode ? 'bg-gray-800' : 'bg-gray-600'} p-2 rounded-md text-white`}
-      >
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
+      <AdminNavbar onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
 
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out z-40`}>
         <AdminSidebar />
       </div>
+
+      {/* Overlay for mobile */}
+      {isMobileMenuOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-50 z-30 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+        />
+      )}
 
       {/* Main content */}
       <div className="md:ml-64 min-h-screen">
@@ -202,18 +260,20 @@ const AdminPaymentsPage = () => {
           <div className="mb-6 flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Search by user email..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className={`w-full pl-10 pr-4 py-2 rounded-lg ${
-                    isDarkMode 
-                      ? 'bg-gray-800 text-white placeholder-gray-400' 
-                      : 'bg-white text-gray-900 placeholder-gray-500'
-                  } border ${isDarkMode ? 'border-gray-700' : 'border-gray-300'}`}
-                />
-                <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                <form onSubmit={e => { e.preventDefault(); setSearchQuery(searchInput); }}>
+                  <Input
+                    type="text"
+                    placeholder="Search by user email..."
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    className={`w-full pl-10 pr-4 py-2 rounded-lg ${
+                      isDarkMode 
+                        ? 'bg-gray-800 text-white placeholder-gray-400' 
+                        : 'bg-white text-gray-900 placeholder-gray-500'
+                    } border ${isDarkMode ? 'border-gray-700' : 'border-gray-300'}`}
+                  />
+                  <Search className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
+                </form>
               </div>
             </div>
             <select
@@ -233,9 +293,9 @@ const AdminPaymentsPage = () => {
             </select>
           </div>
 
-          {/* Payments Table */}
+          {/* Payments Table for md+ screens */}
           <div className={`rounded-xl overflow-hidden ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow-lg`}>
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto hidden md:block">
               <table className="w-full">
                 <thead>
                   <tr className={isDarkMode ? 'bg-gray-700' : 'bg-gray-50'}>
@@ -247,7 +307,7 @@ const AdminPaymentsPage = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {payments.map((user) => (
+                  {filteredPayments.map((user) => (
                     user.purchases.map((purchase, index) => (
                       <tr key={`${user.user.email}-${purchase.movieId}-${index}`} 
                           className={isDarkMode ? 'bg-gray-800' : 'bg-white'}>
@@ -302,6 +362,48 @@ const AdminPaymentsPage = () => {
                   ))}
                 </tbody>
               </table>
+            </div>
+
+            {/* Mobile Card/List Layout */}
+            <div className="md:hidden space-y-4">
+              {filteredPayments.map((user) => (
+                <div key={user.user.email} className={`rounded-lg p-4 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow`}>
+                  <div className="flex items-center mb-2">
+                    {user.user.image && (
+                      <img
+                        src={user.user.image}
+                        alt={user.user.name}
+                        className="h-10 w-10 rounded-full mr-3"
+                      />
+                    )}
+                    <div>
+                      <div className="font-medium">{user.user.name}</div>
+                      <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{user.user.email}</div>
+                    </div>
+                  </div>
+                  <div className="space-y-2">
+                    {user.purchases.map((purchase, idx) => (
+                      <div key={purchase.movieId + idx} className="flex items-center justify-between border-t pt-2">
+                        <div className="flex items-center">
+                          {purchase.poster && (
+                            <img
+                              src={purchase.poster}
+                              alt={purchase.title}
+                              className="h-8 w-8 rounded mr-2 object-cover"
+                            />
+                          )}
+                          <span className="font-medium">{purchase.title}</span>
+                        </div>
+                        <div className="text-right">
+                          <div className="font-medium">{formatCurrency(purchase.price)}</div>
+                          <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{formatDate(purchase.purchaseDate)}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-2 text-green-600 font-semibold">Total: {formatCurrency(user.totalSpent)}</div>
+                </div>
+              ))}
             </div>
 
             {/* Pagination */}

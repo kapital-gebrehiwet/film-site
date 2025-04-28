@@ -179,31 +179,20 @@ const AdminDashboard = () => {
       title: 'Total Users',
       value: loading.users ? '...' : userCount.toLocaleString(),
       icon: UsersIcon,
-      trend: '+12%',
       trendColor: 'text-green-500',
     },
     {
       title: 'Total Movies',
       value: loading.movies ? '...' : movieCount.toLocaleString(),
       icon: VideoIcon,
-      trend: '+5%',
       trendColor: 'text-green-500',
     },
     
   ];
   return (
     <div className={`min-h-screen admin-dashboard ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
-      {/* Mobile menu button */}
-      <AdminNavbar/>
-      <button
-        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-        className={`fixed top-4 left-4 z-50 md:hidden ${isDarkMode ? 'bg-gray-800' : 'bg-gray-600'} p-2 rounded-md text-white`}
-      >
-        <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-        </svg>
-      </button>
-
+      {/* Navbar with hamburger menu handler */}
+      <AdminNavbar onMenuClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)} />
       {/* Sidebar */}
       <div className={`fixed inset-y-0 left-0 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0 transition-transform duration-300 ease-in-out z-40`}>
         <Sidebar />
@@ -283,56 +272,91 @@ const AdminDashboard = () => {
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-semibold">Movie Fee Management</h2>
             </div>
-            
             {loading.list ? (
               <div className="text-center">Loading movies...</div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} border-b`}>
-                      <th className="text-left py-3 px-4">Movie Title</th>
-                      <th className="text-left py-3 px-4">Genre</th>
-                      <th className="text-left py-3 px-4">Current Fee</th>
-                      <th className="text-left py-3 px-4">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {movies.map((movie) => (
-                      <tr key={movie._id} className={`${isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-50'} border-b`}>
-                        <td className="py-3 px-4">{movie.title}</td>
-                        <td className="py-3 px-4">{movie.genre}</td>
-                        <td className="py-3 px-4">
-                          <div className="flex items-center gap-2">
-                            <span>ETB</span>
-                            <input
-                              type="number"
-                              value={feeUpdates[movie._id] ?? movie.fee ?? 0}
-                              onChange={(e) => handleFeeChange(movie._id, e.target.value)}
-                              className={`w-20 px-2 py-1 rounded ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'} border border-gray-300`}
-                              min="0"
-                              step="0.01"
-                              placeholder="0.00"
-                            />
-                          </div>
-                        </td>
-                        <td className="py-3 px-4">
-                          <button
-                            onClick={() => handleFeeUpdate(movie._id)}
-                            disabled={feeUpdates[movie._id] === undefined || feeUpdates[movie._id] === movie.fee}
-                            className={`px-3 py-1 rounded ${feeUpdates[movie._id] === undefined || feeUpdates[movie._id] === movie.fee ? 
-                              (isDarkMode ? 'bg-gray-600' : 'bg-gray-300') : 
-                              (isDarkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600')
-                            } text-white`}
-                          >
-                            Update
-                          </button>
-                        </td>
+              <>
+                {/* Table for md+ screens */}
+                <div className="overflow-x-auto hidden md:block">
+                  <table className="w-full">
+                    <thead>
+                      <tr className={`${isDarkMode ? 'bg-gray-800' : 'bg-white'} border-b`}>
+                        <th className="text-left py-3 px-4">Movie Title</th>
+                        <th className="text-left py-3 px-4">Genre</th>
+                        <th className="text-left py-3 px-4">Current Fee</th>
+                        <th className="text-left py-3 px-4">Actions</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {movies.map((movie) => (
+                        <tr key={movie._id} className={`${isDarkMode ? 'bg-gray-800 hover:bg-gray-700' : 'bg-white hover:bg-gray-50'} border-b`}>
+                          <td className="py-3 px-4">{movie.title}</td>
+                          <td className="py-3 px-4">{movie.genre}</td>
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <span>ETB</span>
+                              <input
+                                type="number"
+                                value={feeUpdates[movie._id] ?? movie.fee ?? 0}
+                                onChange={(e) => handleFeeChange(movie._id, e.target.value)}
+                                className={`w-20 px-2 py-1 rounded ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'} border border-gray-300`}
+                                min="0"
+                                step="0.01"
+                                placeholder="0.00"
+                              />
+                            </div>
+                          </td>
+                          <td className="py-3 px-4">
+                            <button
+                              onClick={() => handleFeeUpdate(movie._id)}
+                              disabled={feeUpdates[movie._id] === undefined || feeUpdates[movie._id] === movie.fee}
+                              className={`px-3 py-1 rounded ${feeUpdates[movie._id] === undefined || feeUpdates[movie._id] === movie.fee ? 
+                                (isDarkMode ? 'bg-gray-600' : 'bg-gray-300') : 
+                                (isDarkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600')
+                              } text-white`}
+                            >
+                              Update
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {/* Card/List layout for mobile */}
+                <div className="md:hidden space-y-4">
+                  {movies.map((movie) => (
+                    <div key={movie._id} className={`rounded-lg p-4 ${isDarkMode ? 'bg-gray-800' : 'bg-white'} shadow`}>
+                      <div className="mb-2">
+                        <div className="font-semibold text-lg">{movie.title}</div>
+                        <div className={`text-sm ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{movie.genre}</div>
+                      </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span>ETB</span>
+                        <input
+                          type="number"
+                          value={feeUpdates[movie._id] ?? movie.fee ?? 0}
+                          onChange={(e) => handleFeeChange(movie._id, e.target.value)}
+                          className={`w-24 px-2 py-1 rounded ${isDarkMode ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'} border border-gray-300`}
+                          min="0"
+                          step="0.01"
+                          placeholder="0.00"
+                        />
+                      </div>
+                      <button
+                        onClick={() => handleFeeUpdate(movie._id)}
+                        disabled={feeUpdates[movie._id] === undefined || feeUpdates[movie._id] === movie.fee}
+                        className={`w-full px-3 py-2 rounded ${feeUpdates[movie._id] === undefined || feeUpdates[movie._id] === movie.fee ? 
+                          (isDarkMode ? 'bg-gray-600' : 'bg-gray-300') : 
+                          (isDarkMode ? 'bg-blue-600 hover:bg-blue-700' : 'bg-blue-500 hover:bg-blue-600')
+                        } text-white mt-2`}
+                      >
+                        Update
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </>
             )}
           </div>
         </div>

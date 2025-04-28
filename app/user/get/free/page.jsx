@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import VideoPlayer from '../../../../components/VideoPlayer';
 import { formatCurrency } from '../../../../lib/utils';
 import { toast } from 'react-hot-toast';
+import { Input } from "../../../../components/ui/input";
 
 export default function FreeMoviesPage() {
   const router = useRouter();
@@ -410,7 +411,7 @@ export default function FreeMoviesPage() {
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold text-gray-800">Movies</h1>
           <div className="relative">
-            <input
+            <Input
               type="text"
               placeholder="Search movies..."
               value={searchQuery}
