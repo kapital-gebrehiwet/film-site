@@ -9,6 +9,34 @@ const VideoPlayer = ({ videoUrl, trailerUrl, title, posterPath }) => {
   const videoRef = useRef(null);
   const [isMounted, setIsMounted] = useState(false);
 
+  // Function to validate URL
+  const isValidUrl = (url) => {
+    if (!url) return false;
+    try {
+      new URL(url);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  };
+
+  // Function to get proper video URL
+  const getVideoUrl = (url) => {
+    if (!url) return null;
+    
+    // If it's a relative URL, prepend the base URL
+    if (url.startsWith('/')) {
+      return `${window.location.origin}${url}`;
+    }
+    
+    // If it's already a full URL, return as is
+    if (isValidUrl(url)) {
+      return url;
+    }
+    
+    return null;
+  };
+
   // Only mount the video player when it's in the viewport
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -33,9 +61,17 @@ const VideoPlayer = ({ videoUrl, trailerUrl, title, posterPath }) => {
   }, []);
 
   useEffect(() => {
-    // Reset states when video URL changes
     setIsLoading(true);
     setError(null);
+    
+    // Validate URLs when they change
+    const validVideoUrl = getVideoUrl(videoUrl);
+    const validTrailerUrl = getVideoUrl(trailerUrl);
+    
+    if (!validVideoUrl && !validTrailerUrl) {
+      setError('No valid video or trailer URL provided');
+      setIsLoading(false);
+    }
   }, [videoUrl, trailerUrl]);
 
   const handleVideoError = (e) => {
@@ -44,7 +80,6 @@ const VideoPlayer = ({ videoUrl, trailerUrl, title, posterPath }) => {
     
     let errorMessage = 'Failed to load video. Please try again later.';
     
-    // Provide more specific error messages based on error code
     if (videoElement.error) {
       switch (videoElement.error.code) {
         case 1:
@@ -62,18 +97,31 @@ const VideoPlayer = ({ videoUrl, trailerUrl, title, posterPath }) => {
       }
     }
     
+    // Log detailed error information
+    console.log('Video URL:', videoUrl);
+    console.log('Trailer URL:', trailerUrl);
+    console.log('Error details:', {
+      code: videoElement.error?.code,
+      message: videoElement.error?.message,
+      currentSrc: videoElement.currentSrc,
+    });
+    
     setError(errorMessage);
     setIsLoading(false);
   };
 
   const handleVideoLoad = () => {
     setIsLoading(false);
+    setError(null);
   };
 
-  if (!videoUrl && !trailerUrl) {
+  // Early return if no valid URLs
+  if (!getVideoUrl(videoUrl) && !getVideoUrl(trailerUrl)) {
     return (
       <div className="w-full aspect-video bg-black rounded-lg overflow-hidden flex items-center justify-center">
-        <p className="text-white">No video available</p>
+        <p className="text-white text-center px-4">
+          {error || 'No video available'}
+        </p>
       </div>
     );
   }
@@ -88,39 +136,47 @@ const VideoPlayer = ({ videoUrl, trailerUrl, title, posterPath }) => {
       
       {error && (
         <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 z-10">
-          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-            {error}
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative">
+            <strong className="font-bold">Error: </strong>
+            <span className="block sm:inline">{error}</span>
           </div>
         </div>
       )}
       
       {isMounted && (
         <>
-      {isPlayingTrailer ? (
-        <iframe
-          src={trailerUrl}
-          title={`${title} Trailer`}
-          className="w-full h-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-          allowFullScreen
+          {isPlayingTrailer && getVideoUrl(trailerUrl) ? (
+            <iframe
+              src={getVideoUrl(trailerUrl)}
+              title={`${title || 'Movie'} Trailer`}
+              className="w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
               onLoad={handleVideoLoad}
               onError={handleVideoError}
               loading="lazy"
-        />
-      ) : (
-        <video
+            />
+          ) : getVideoUrl(videoUrl) ? (
+            <video
               ref={videoRef}
-          src={videoUrl}
-          controls
-          className="w-full h-full"
+              src={getVideoUrl(videoUrl)}
+              controls
+              className="w-full h-full"
               poster={posterPath ? `https://image.tmdb.org/t/p/w500${posterPath}` : undefined}
               onLoadedData={handleVideoLoad}
               onError={handleVideoError}
               crossOrigin="anonymous"
               preload="metadata"
-        >
-          Your browser does not support the video tag.
-        </video>
+              playsInline
+            >
+              <source src={getVideoUrl(videoUrl)} type="video/mp4" />
+              <source src={getVideoUrl(videoUrl)} type="video/webm" />
+              Your browser does not support the video tag.
+            </video>
+          ) : (
+            <div className="w-full h-full flex items-center justify-center">
+              <p className="text-white">No valid video source available</p>
+            </div>
           )}
         </>
       )}
@@ -131,7 +187,7 @@ const VideoPlayer = ({ videoUrl, trailerUrl, title, posterPath }) => {
         </div>
       )}
       
-      {trailerUrl && (
+      {getVideoUrl(videoUrl) && getVideoUrl(trailerUrl) && (
         <button
           onClick={() => setIsPlayingTrailer(!isPlayingTrailer)}
           className="absolute bottom-4 right-4 bg-black bg-opacity-50 text-white px-4 py-2 rounded hover:bg-opacity-75 z-20"

@@ -2,91 +2,113 @@ import { getServerSession } from 'next-auth/next';
 import { authOptions } from '../../../../lib/auth';
 import { NextResponse } from 'next/server';
 import connectDB from '../../../../lib/mongodb';
-import Payment from '../../../../models/Payment';
 import User from '../../../../models/User';
 import Movie from '../../../../models/Movie';
+import Payment from '../../../../models/Payment';
 
 export async function GET() {
   try {
-    // Check authentication
     const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Connect to database
-    try {
-      await connectDB();
-    } catch (dbError) {
-      console.error('Database connection error:', dbError);
-      return NextResponse.json({ 
-        error: 'Database connection failed',
-        details: dbError.message 
-      }, { status: 500 });
-    }
+    await connectDB();
 
-    // Find user and their payments
-    try {
+    // Find all payments for the user
+    const payments = await Payment.find({
+      userId: session.user.id,
+      status: 'completed'
+    }).sort({ paymentDate: -1 }).lean();
+
+    // If no payments found, check user's moviePayments map
+    if (!payments || payments.length === 0) {
       const user = await User.findById(session.user.id)
-        .select('moviePayments')
+        .select('moviePayments purchasedMovies')
         .lean();
 
       if (!user) {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 
-      // Handle case where moviePayments is undefined
-      if (!user.moviePayments) {
-        return NextResponse.json([]);
+      // Convert moviePayments map to array and fetch movie details
+      const moviePayments = [];
+      
+      // Handle both Map and plain object cases
+      const paymentEntries = user.moviePayments instanceof Map ? 
+        Array.from(user.moviePayments.entries()) : 
+        Object.entries(user.moviePayments || {});
+
+      for (const [movieId, payment] of paymentEntries) {
+        const movie = await Movie.findById(movieId)
+          .select('title fee')
+          .lean();
+
+        if (movie) {
+          moviePayments.push({
+            movieId,
+            amount: payment.amount || movie.fee || 0,
+            status: payment.status || 'completed',
+            paymentDate: payment.paymentDate || new Date(),
+            tx_ref: payment.tx_ref || 'LEGACY_PURCHASE',
+            movieTitle: movie.title
+          });
+        }
       }
 
-      // Get all movie IDs from payments
-      const movieIds = Object.keys(user.moviePayments);
-      
-      // Fetch all movies in one query
-      const movies = await Movie.find({ _id: { $in: movieIds } })
-        .select('_id fee title')
-        .lean();
-      
-      // Create a map of movie details for quick lookup
-      const movieMap = movies.reduce((acc, movie) => {
-        acc[movie._id.toString()] = movie;
-        return acc;
-      }, {});
+      // For any purchased movies without payment records, create legacy payment records
+      for (const movieId of (user.purchasedMovies || [])) {
+        if (!paymentEntries.some(([id]) => id === movieId.toString())) {
+          const movie = await Movie.findById(movieId)
+            .select('title fee')
+            .lean();
 
-      // Convert moviePayments object to array and add movieId and movie details
-      const payments = Object.entries(user.moviePayments).map(([movieId, payment]) => {
-        const movie = movieMap[movieId];
-        return {
-          ...payment,
-          movieId,
-          tx_ref: payment.tx_ref || 'N/A',
-          amount: payment.amount || movie?.fee || 0,
-          status: payment.status || 'unknown',
-          paymentDate: payment.paymentDate || null,
-          movieTitle: movie?.title || 'Unknown Movie'
-        };
-      });
+          if (movie) {
+            moviePayments.push({
+              movieId: movieId.toString(),
+              amount: movie.fee || 0,
+              status: 'completed',
+              paymentDate: new Date(), // Use current date as fallback
+              tx_ref: `LEGACY_${movieId}`,
+              movieTitle: movie.title
+            });
+          }
+        }
+      }
 
-      // Sort payments by date, most recent first
-      payments.sort((a, b) => {
-        if (!a.paymentDate) return 1;
-        if (!b.paymentDate) return -1;
-        return new Date(b.paymentDate) - new Date(a.paymentDate);
-      });
-
-      return NextResponse.json(payments);
-    } catch (userError) {
-      console.error('Error fetching user data:', userError);
-      return NextResponse.json({ 
-        error: 'Failed to fetch user data',
-        details: userError.message 
-      }, { status: 500 });
+      return NextResponse.json(moviePayments);
     }
+
+    // Enhance payments with movie details
+    const enhancedPayments = await Promise.all(
+      payments.map(async (payment) => {
+        let movieDetails = { title: 'Unknown Movie' };
+        
+        if (payment.purchasedMovies && payment.purchasedMovies.length > 0) {
+          const movieId = payment.purchasedMovies[0].movieId;
+          const movie = await Movie.findById(movieId).select('title').lean();
+          if (movie) {
+            movieDetails = movie;
+          }
+        }
+
+        return {
+          movieId: payment.purchasedMovies?.[0]?.movieId || null,
+          amount: payment.amount,
+          status: payment.status,
+          paymentDate: payment.paymentDate || payment.createdAt,
+          tx_ref: payment.tx_ref,
+          movieTitle: movieDetails.title
+        };
+      })
+    );
+
+    return NextResponse.json(enhancedPayments);
+
   } catch (error) {
-    console.error('Unexpected error in GET /api/user/payments:', error);
+    console.error('Error in GET /api/user/payments:', error);
     return NextResponse.json({ 
-      error: 'Internal server error',
+      error: 'Failed to fetch payment history',
       details: error.message 
     }, { status: 500 });
   }

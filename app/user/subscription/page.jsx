@@ -151,6 +151,10 @@ const UserSubscriptionPage = () => {
     }
   };
 
+  const formatCurrency = (amount) => {
+    return `ETB ${amount.toFixed(2)}`;
+  };
+
   if (loading) {
     return (
       <div className={`min-h-screen user-dashboard ${isDarkMode ? 'bg-gray-900' : 'bg-gray-100'}`}>
@@ -252,7 +256,7 @@ const UserSubscriptionPage = () => {
                         </div>
                       )}
                       <div className={`absolute top-2 right-2 px-2 py-1 rounded-full ${isDarkMode ? 'bg-gray-900' : 'bg-white'} text-xs font-medium`}>
-                        ${movie.fee || 0}
+                        {movie.fee || 0} Birr 
                       </div>
                     </div>
                     <div className="p-4">
@@ -306,12 +310,12 @@ const UserSubscriptionPage = () => {
                     {paymentHistory.map((payment) => {
                       const movie = purchasedMovies.find(m => m._id === payment.movieId);
                       return (
-                        <tr key={payment.tx_ref} className={`${isDarkMode ? 'border-gray-700' : 'border-gray-200'} border-b`}>
+                        <tr key={payment.tx_ref || `payment-${payment.movieId}`} className={`${isDarkMode ? 'border-gray-700' : 'border-gray-200'} border-b`}>
                           <td className="py-3 px-4">
-                            {movie ? movie.title : 'Unknown Movie'}
+                            {payment.movieTitle || (movie ? movie.title : 'Unknown Movie')}
                           </td>
                           <td className="py-3 px-4">
-                            ${payment.amount || 0}
+                            {formatCurrency(payment.amount || 0)}
                           </td>
                           <td className="py-3 px-4">
                             {formatDate(payment.paymentDate)}
@@ -324,7 +328,7 @@ const UserSubscriptionPage = () => {
                                   ? 'bg-yellow-100 text-yellow-800' 
                                   : 'bg-red-100 text-red-800'
                             }`}>
-                              {payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}
+                              {(payment.status || 'completed').charAt(0).toUpperCase() + (payment.status || 'completed').slice(1)}
                             </span>
                           </td>
                           <td className="py-3 px-4 text-xs font-mono">

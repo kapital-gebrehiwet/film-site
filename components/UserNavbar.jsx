@@ -1,10 +1,10 @@
 import React from 'react';
 import { signOut } from 'next-auth/react';
-import { LogOutIcon, SunIcon, MoonIcon } from 'lucide-react';
+import { LogOutIcon, SunIcon, MoonIcon, Menu } from 'lucide-react';
 import { useTheme } from '../context/ThemeContext';
 import Link from 'next/link';
 
-const UserNavbar = () => {
+const UserNavbar = ({ onMenuClick }) => {
     const { isDarkMode, toggleTheme } = useTheme();
     const handleLogout = async () => {
         await signOut({ callbackUrl: '/' });
@@ -14,6 +14,13 @@ const UserNavbar = () => {
         <>
             <header className="bg-slate-600 border border-white text-white fixed top-0 left-0 right-0 z-50 dark:bg-gray-900 flex justify-between items-center h-16 px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center gap-8">
+                    <button
+                        onClick={onMenuClick}
+                        className="md:hidden p-2 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-700 transition-colors"
+                        aria-label="Toggle menu"
+                    >
+                        <Menu className="h-6 w-6 text-white" />
+                    </button>
                     <Link href="/user">User Home</Link>
                 </div>
                 

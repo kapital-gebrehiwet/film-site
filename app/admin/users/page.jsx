@@ -246,22 +246,22 @@ export default function AdminUsersPage() {
               <h2 className="text-xl md:text-2xl font-bold mb-4">Create New User</h2>
               <form onSubmit={handleCreateUser} className=' text-white'>
                 <div className="mb-4 ">
-                  <label className="block text-gray-700 mb-2">Name</label>
+                  <label className="block text-gray-200 mb-2">Name</label>
                   <input
                     type="text"
                     value={newUser.name}
                     onChange={(e) => setNewUser(prev => ({ ...prev, name: e.target.value }))}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border border-white rounded-lg"
                     required
                   />
                 </div>
                 <div className="mb-4">
-                  <label className="block text-gray-700 mb-2">Email</label>
+                  <label className="block text-gray-200 mb-2">Email</label>
                   <input
                     type="email"
                     value={newUser.email}
                     onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
-                    className="w-full px-3 py-2 border rounded-lg"
+                    className="w-full px-3 py-2 border border-white rounded-lg"
                     required
                   />
                 </div>
@@ -451,7 +451,37 @@ export default function AdminUsersPage() {
                       {formatDate(user.createdAt)}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                      {isMainAdmin && (
+                      {isMainAdmin ? (
+                        <>
+                          <button
+                            onClick={() => setEditingUser(user)}
+                            className="text-indigo-600 hover:text-indigo-900 mr-4"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleBlockUser(user._id, !user.isBlocked)}
+                            className={`${
+                              user.isBlocked
+                                ? "text-green-600 hover:text-green-900"
+                                : "text-red-600 hover:text-red-900"
+                            } mr-4`}
+                          >
+                            {user.isBlocked ? "Unblock" : "Block"}
+                          </button>
+                          <button
+                            onClick={() => handleDeleteUser(user._id)}
+                            className="text-red-600 hover:text-red-900"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      ) : user.email.toLowerCase() === MAIN_ADMIN_EMAIL ? (
+                        <span className="text-purple-600 font-medium flex items-center justify-end">
+                          <span className="mr-2">👑</span>
+                          Superadmin - Protected
+                        </span>
+                      ) : (
                         <>
                           <button
                             onClick={() => setEditingUser(user)}
@@ -531,7 +561,39 @@ export default function AdminUsersPage() {
                       Joined: {formatDate(user.createdAt)}
                     </span>
                   </div>
-                  {isMainAdmin && (
+                  {isMainAdmin ? (
+                    <div className="flex justify-end gap-2 mt-2">
+                      <button
+                        onClick={() => setEditingUser(user)}
+                        className="px-3 py-1 text-xs text-indigo-600 hover:text-indigo-900 border border-indigo-300 rounded"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleBlockUser(user._id, !user.isBlocked)}
+                        className={`px-3 py-1 text-xs border rounded ${
+                          user.isBlocked
+                            ? "text-green-600 hover:text-green-900 border-green-300"
+                            : "text-red-600 hover:text-red-900 border-red-300"
+                        }`}
+                      >
+                        {user.isBlocked ? "Unblock" : "Block"}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteUser(user._id)}
+                        className="px-3 py-1 text-xs text-red-600 hover:text-red-900 border border-red-300 rounded"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ) : user.email.toLowerCase() === MAIN_ADMIN_EMAIL ? (
+                    <div className="flex justify-end mt-2">
+                      <span className="text-purple-600 font-medium flex items-center">
+                        <span className="mr-2">👑</span>
+                        Superadmin - Protected
+                      </span>
+                    </div>
+                  ) : (
                     <div className="flex justify-end gap-2 mt-2">
                       <button
                         onClick={() => setEditingUser(user)}

@@ -164,8 +164,14 @@ export default function SettingsPage() {
       formData.append('name', profile.name);
       formData.append('email', profile.email);
       
+      // Create a notifications object that preserves lastPurchase
+      const notificationsToUpdate = {
+        ...profile.notifications,
+        lastPurchase: profile.notifications.lastPurchase || null
+      };
+      
       // Properly stringify the notifications object
-      formData.append('notifications', JSON.stringify(profile.notifications));
+      formData.append('notifications', JSON.stringify(notificationsToUpdate));
       
       if (fileInputRef.current?.files?.[0]) {
         formData.append('image', fileInputRef.current.files[0]);
@@ -178,18 +184,64 @@ export default function SettingsPage() {
 
       if (response.ok) {
         const data = await response.json();
+        
+        // Update local state with the response data
         setProfile(prev => ({
           ...prev,
-          image: data.profile.image
+          name: data.profile.name,
+          email: data.profile.email,
+          image: data.profile.image,
+          notifications: data.profile.notifications
         }));
-        toast.success('Settings updated successfully');
+
+        toast.success('Profile updated successfully! 🎉', {
+          duration: 4000,
+          position: 'top-center',
+          style: {
+            background: isDarkMode ? '#1F2937' : '#fff',
+            color: isDarkMode ? '#fff' : '#000',
+            border: '1px solid',
+            borderColor: isDarkMode ? '#374151' : '#E5E7EB',
+            padding: '16px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+          },
+          icon: '✨',
+        });
+
+        // Force a revalidation of the page data
+        router.refresh();
       } else {
         const data = await response.json();
-        toast.error(data.error || 'Failed to update settings');
+        toast.error(data.error || 'Failed to update settings', {
+          duration: 4000,
+          position: 'top-center',
+          style: {
+            background: isDarkMode ? '#1F2937' : '#fff',
+            color: isDarkMode ? '#fff' : '#000',
+            border: '1px solid',
+            borderColor: isDarkMode ? '#374151' : '#E5E7EB',
+            padding: '16px',
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+          },
+        });
       }
     } catch (error) {
       console.error('Error updating settings:', error);
-      toast.error('Error updating settings');
+      toast.error('Error updating settings', {
+        duration: 4000,
+        position: 'top-center',
+        style: {
+          background: isDarkMode ? '#1F2937' : '#fff',
+          color: isDarkMode ? '#fff' : '#000',
+          border: '1px solid',
+          borderColor: isDarkMode ? '#374151' : '#E5E7EB',
+          padding: '16px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
+        },
+      });
     }
   };
 

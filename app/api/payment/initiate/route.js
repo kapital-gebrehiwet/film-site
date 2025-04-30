@@ -56,6 +56,7 @@ export async function POST(request) {
       userId: new mongoose.Types.ObjectId(user._id),
       userEmail: user.email,
       amount: movie.fee,
+      currency: 'ETB',
       status: 'pending',
       tx_ref,
       paymentDate: new Date(),

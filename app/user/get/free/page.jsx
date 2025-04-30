@@ -9,6 +9,14 @@ import { formatCurrency } from '../../../../lib/utils';
 import { toast } from 'react-hot-toast';
 import { Input } from "../../../../components/ui/input";
 
+// Define movie categories based on purchase status
+const MOVIE_CATEGORIES = [
+  { id: 'free', name: 'Free Movies', icon: '🎬', description: 'Movies available for free streaming' },
+  { id: 'purchased', name: 'My Purchases', icon: '✅', description: 'Movies you have purchased' },
+  { id: 'buy', name: 'Premium Movies', icon: '💎', description: 'Movies available for purchase' },
+  { id: 'all', name: 'All Movies', icon: '📽️', description: 'Browse all available movies' }
+];
+
 export default function FreeMoviesPage() {
   const router = useRouter();
   const { data: session, status, update } = useSession();
@@ -21,42 +29,105 @@ export default function FreeMoviesPage() {
   const [movieStates, setMovieStates] = useState({});
   const [purchasedMovies, setPurchasedMovies] = useState([]);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [activeCategory, setActiveCategory] = useState('all');
+  const [categorizedMovies, setCategorizedMovies] = useState({});
+
+  // Function to fetch purchased movies details
+  const fetchPurchasedMovies = async () => {
+    try {
+      // Fetch user profile
+      const userResponse = await fetch('/api/user/profile');
+      if (!userResponse.ok) {
+        throw new Error('Failed to fetch user profile');
+      }
+      const userData = await userResponse.json();
+      
+      // If user has purchased movies, fetch their details
+      if (userData.purchasedMovies && userData.purchasedMovies.length > 0) {
+        const moviePromises = userData.purchasedMovies.map(async movieId => {
+          try {
+            const movieResponse = await fetch(`/api/movies/${movieId}`);
+            if (!movieResponse.ok) {
+              console.warn(`Movie ${movieId} not found or inaccessible`);
+              return null;
+            }
+            return movieResponse.json();
+          } catch (movieError) {
+            console.warn(`Error fetching movie ${movieId}:`, movieError);
+            return null;
+          }
+        });
+        
+        const movies = (await Promise.all(moviePromises)).filter(movie => movie !== null);
+        console.log('Fetched purchased movies:', movies);
+        return movies;
+      }
+      return [];
+    } catch (error) {
+      console.error('Error fetching purchased movies:', error);
+      return [];
+    }
+  };
 
   const fetchMovies = async () => {
     try {
-      console.log('Fetching movies...');
+      setLoading(true);
+      
+      // First fetch purchased movies
+      const purchasedMoviesList = await fetchPurchasedMovies();
+      setPurchasedMovies(purchasedMoviesList);
+      console.log('Purchased movies set:', purchasedMoviesList);
+      
+      // Then fetch all movies
       const response = await fetch('/api/user/movies');
       if (!response.ok) throw new Error('Failed to fetch movies');
       const data = await response.json();
-      console.log('Movies fetched:', data);
       
-      // Get user's purchased movies
-      const userResponse = await fetch('/api/user/profile');
-      if (!userResponse.ok) throw new Error('Failed to fetch user profile');
-      const userData = await userResponse.json();
-      console.log('User data fetched:', userData);
-      
-      // Store purchased movies in state
-      const userPurchasedMovies = userData.purchasedMovies || [];
-      setPurchasedMovies(userPurchasedMovies);
-      
-      // Initialize movie states based on fee and purchased status
+      // Initialize movie states
       const initialMovieStates = {};
       data.forEach(movie => {
         const movieIdStr = movie._id.toString();
-        const isPurchased = userPurchasedMovies.includes(movieIdStr);
-        console.log(`Initializing state for movie ${movieIdStr} with fee ${movie.fee}, purchased: ${isPurchased}`);
+        const isPurchased = purchasedMoviesList.some(pm => pm._id === movieIdStr);
         
         initialMovieStates[movieIdStr] = {
           isLocked: movie.fee > 0 && !isPurchased,
           isBlurred: movie.fee > 0 && !isPurchased
         };
       });
-      console.log('Initial movie states:', initialMovieStates);
       
       setMovieStates(initialMovieStates);
       setMovies(data);
-      setFilteredMovies(data);
+      
+      // Categorize movies
+      const categorized = {
+        free: data.filter(movie => movie.fee === 0),
+        purchased: purchasedMoviesList,
+        buy: data.filter(movie => {
+          const isPurchased = purchasedMoviesList.some(pm => pm._id === movie._id.toString());
+          return movie.fee > 0 && !isPurchased;
+        }),
+        all: data
+      };
+
+      // Sort each category
+      Object.keys(categorized).forEach(category => {
+        categorized[category].sort((a, b) => {
+          if (b.voteAverage !== a.voteAverage) {
+            return b.voteAverage - a.voteAverage;
+          }
+          return b.popularity - a.popularity;
+        });
+      });
+
+      console.log('Categorized movies:', {
+        free: categorized.free.length,
+        purchased: categorized.purchased.length,
+        buy: categorized.buy.length,
+        all: categorized.all.length
+      });
+
+      setCategorizedMovies(categorized);
+      setFilteredMovies(categorized[activeCategory]);
     } catch (err) {
       console.error('Error fetching movies:', err);
       setError(err.message);
@@ -365,13 +436,18 @@ export default function FreeMoviesPage() {
     }
   }, [session]);
 
+  // Update useEffect for search and category filtering
   useEffect(() => {
-    const filtered = movies.filter(movie =>
-      movie.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      movie.description.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-    setFilteredMovies(filtered);
-  }, [searchQuery, movies]);
+    if (searchQuery) {
+      const filtered = movies.filter(movie =>
+        movie.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        movie.description.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+      setFilteredMovies(filtered);
+    } else {
+      setFilteredMovies(categorizedMovies[activeCategory] || []);
+    }
+  }, [searchQuery, activeCategory, categorizedMovies, movies]);
 
   if (status === 'loading' || paymentProcessing) {
     return (
@@ -434,12 +510,36 @@ export default function FreeMoviesPage() {
           </div>
         </div>
 
+        {/* Category Tabs */}
+        <div className="mb-8 overflow-x-auto">
+          <div className="flex space-x-4 pb-4">
+            {MOVIE_CATEGORIES.map((category) => (
+              <button
+                key={category.id}
+                onClick={() => setActiveCategory(category.id)}
+                className={`flex items-center space-x-2 px-4 py-2 rounded-lg whitespace-nowrap transition-colors ${
+                  activeCategory === category.id
+                    ? 'bg-blue-500 text-white'
+                    : 'bg-white text-gray-700 hover:bg-gray-100'
+                }`}
+              >
+                <span className="text-lg">{category.icon}</span>
+                <div className="text-left">
+                  <span className="font-medium">{category.name}</span>
+                  <p className="text-xs opacity-75">{category.description}</p>
+                </div>
+                <span className="text-sm opacity-75">
+                  ({categorizedMovies[category.id]?.length || 0})
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {filteredMovies.map((movie) => {
             const movieIdStr = movie._id.toString();
             const movieState = movieStates[movieIdStr] || { isLocked: true, isBlurred: true };
-            
-            console.log(`Rendering movie ${movieIdStr}:`, movieState);
             
             return (
               <div
@@ -448,6 +548,7 @@ export default function FreeMoviesPage() {
                   movieState.isLocked ? 'relative' : ''
                 }`}
               >
+                {/* Lock Overlay */}
                 {movieState.isLocked && (
                   <div className="absolute inset-0 bg-black/30 backdrop-blur-[2px] z-10 flex flex-col items-center justify-center p-4">
                     <div className="bg-white/90 rounded-lg p-6 shadow-lg max-w-sm w-full">
@@ -466,68 +567,69 @@ export default function FreeMoviesPage() {
                         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        unlock Movie
+                        Unlock Movie
                       </button>
                     </div>
                   </div>
                 )}
-                <div className="relative h-64">
-                  <Image
-                    src={`https://image.tmdb.org/t/p/w500${movie.posterPath}`}
-                    alt={movie.title}
-                    fill
-                    className={`object-cover ${movieState.isBlurred ? 'blur-[2px]' : ''}`}
-                  />
-                  <div className="absolute top-2 right-2 bg-yellow-400 text-black px-2 py-1 rounded-full text-sm font-semibold">
-                    {movie.voteAverage.toFixed(1)}
-                  </div>
-                </div>
-                <div className="p-4">
-                  <h2 className="text-xl font-bold mb-2 text-gray-800">{movie.title}</h2>
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-2">{movie.description}</p>
-                  
-                  {/* Video Player Section */}
-                  {!movieState.isLocked && movie.videoUrl && (
-                    <div className="mb-4">
-                      <VideoPlayer url={movie.videoUrl} />
-                    </div>
-                  )}
-                  
-                  {/* Trailer Section */}
-                  {movie.trailerUrl && (
-                    <div className="mb-4">
-                      <iframe
-                        src={movie.trailerUrl}
-                        title={`${movie.title} Trailer`}
-                        className="w-full aspect-video rounded-lg"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
+
+                {/* Movie Info Section */}
+                <div className="flex flex-col h-full">
+                  {/* Poster and Basic Info */}
+                  <div>
+                    <div className="relative h-64">
+                      <Image
+                        src={`https://image.tmdb.org/t/p/w500${movie.posterPath}`}
+                        alt={movie.title}
+                        fill
+                        className={`object-cover ${movieState.isBlurred ? 'blur-[2px]' : ''}`}
                       />
+                      <div className="absolute top-2 right-2 bg-yellow-400 text-black px-2 py-1 rounded-full text-sm font-semibold">
+                        {movie.voteAverage.toFixed(1)}
+                      </div>
                     </div>
-                  )}
-                  
-                  {/* Video Info */}
+                    <div className="p-4">
+                      <h2 className="text-xl font-bold mb-2 text-gray-800">{movie.title}</h2>
+                      <p className="text-gray-600 text-sm mb-4">{movie.description}</p>
+                      
+                      {/* Movie Details */}
+                      <div className="mb-4 text-sm text-gray-500">
+                        <p><span className="font-semibold">Release Date:</span> {movie.releaseDate}</p>
+                        <p><span className="font-semibold">Runtime:</span> {movie.runtime} minutes</p>
+                        <p><span className="font-semibold">Status:</span> {movie.fee === 0 ? 'Free' : 'Premium'}</p>
+                        {movie.fee > 0 && <p><span className="font-semibold">Price:</span> {formatCurrency(movie.fee)}</p>}
+                      </div>
+
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {movie.genres.map((genre, index) => (
+                          <span
+                            key={index}
+                            className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded"
+                          >
+                            {genre}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Video Section - Only show if unlocked and has video content */}
                   {!movieState.isLocked && (movie.videoUrl || movie.trailerUrl) && (
-                    <div className="mb-4 text-sm text-gray-500">
-                      <p>Quality: {movie.videoQuality}</p>
-                      <p>Format: {movie.videoFormat}</p>
+                    <div className="border-t border-gray-200 mt-auto">
+                      {movie.trailerUrl && (
+                        <div className="p-4">
+                          <h3 className="text-lg font-semibold mb-2">Watch Trailer</h3>
+                          <iframe
+                            src={movie.trailerUrl}
+                            title={`${movie.title} Trailer`}
+                            className="w-full aspect-video rounded-lg"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
-                  
-                  <div className="flex flex-wrap gap-2 mb-4">
-                    {movie.genres.map((genre, index) => (
-                      <span
-                        key={index}
-                        className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded"
-                      >
-                        {genre}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="flex justify-between items-center text-sm text-gray-500">
-                    <span>{movie.releaseDate}</span>
-                    <span>{movie.runtime} min</span>
-                  </div>
                 </div>
               </div>
             );
@@ -536,7 +638,7 @@ export default function FreeMoviesPage() {
 
         {filteredMovies.length === 0 && (
           <div className="text-center py-12">
-            <p className="text-gray-500 text-lg">No movies found</p>
+            <p className="text-gray-500 text-lg">No movies found in this category</p>
           </div>
         )}
       </div>

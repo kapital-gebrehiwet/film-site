@@ -136,10 +136,7 @@ const AdminPaymentsPage = () => {
   };
 
   const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'ETB'
-    }).format(amount);
+    return `ETB ${amount.toFixed(2)}`;
   };
 
   const formatDate = (dateString) => {
@@ -396,7 +393,9 @@ const AdminPaymentsPage = () => {
                         </div>
                         <div className="text-right">
                           <div className="font-medium">{formatCurrency(purchase.price)}</div>
-                          <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>{formatDate(purchase.purchaseDate)}</div>
+                          <div className={`text-xs ${isDarkMode ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {formatDate(purchase.purchaseDate)}
+                          </div>
                         </div>
                       </div>
                     ))}
